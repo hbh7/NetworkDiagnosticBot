@@ -2,7 +2,7 @@
 A handy script that can debug the network for me when I'm not there and I have to rely on non-technical users
 
 List of the things to do:
-
+```
 Print this to user: 
 Commands (enter number): 
 1. Run tests
@@ -38,7 +38,7 @@ What to do for each (make a function):
 4. ssh 10.20.31.1
     restore vm from backup
     start vm
-    
+```
     
 Eventually: 
 Align output nicer
