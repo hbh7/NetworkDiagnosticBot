@@ -1,6 +1,8 @@
 import os
 from colorama import Fore, Back, Style
 import paramiko
+import socket
+import subprocess
 
 
 def cmd1():
@@ -28,6 +30,16 @@ def cmd1():
         else:
             print(Fore.RED, end="")
         print(value["result"] + Style.RESET_ALL)
+
+    print()
+
+    proc = subprocess.Popen(["ifconfig"], stdout=subprocess.PIPE, shell=True)
+    (out, err) = proc.communicate()
+    print("program output:", out)
+    print(type(out))
+    parts = out.decode("utf-8").split('\n')
+    print(parts)
+    print("Current IP Address: ")
 
 
 def cmd2():
