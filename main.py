@@ -3,43 +3,88 @@ from colorama import Fore, Back, Style
 import paramiko
 import socket
 import subprocess
+from simple_term_menu import TerminalMenu
+from tabulate import tabulate
 
 
 def cmd1():
-    ips = {"10.20.30.40": {"name": "Router"},
-           "10.20.31.1": {"name": "R620"},
-           "10.20.31.2": {"name": "EliteDesk"},
-           "192.168.100.1": {"name": "Modem"},
-           "google.com": {"name": "Internet Connectivity"},
-           "192.168.100.2": {"name": "Fail test"}}
 
-    results = ips
+    # IP Address Information
+    proc = subprocess.Popen("ipconfig.exe /all", stdout=subprocess.PIPE, shell=True)
+    (out, err) = proc.communicate()
+
+    # Find physical ethernet adapters
+    print("Current IP Information:")
+    printout = False
+    out = out.decode("utf-8").split('\n')
+    targetData = [
+        "Description",
+        "Physical Address",
+        "DHCP Enabled",
+        "Autoconfiguration Enabled",
+        "IPv4 Address",
+
+    ]
+    for line in out:
+        if "Ethernet adapter Ethernet" in line:
+            printout = True
+        elif len(line) > 0 and line[0] != " " and line[0] != "\r":
+            printout = False
+
+        if printout:
+            if [keyword for keyword in targetData if(keyword in line)]:
+                print(line)
+
+
+    #print("program output:", out)
+    #print(type(out))
+    #parts = out.decode("utf-8").split('\n')
+    #print(parts)
+    #print("Current IP Address: ")
+
+
+    # Ping Test
+    ips = {
+        "10.20.32.1": {"name": "Router"},
+        "10.20.32.99": {"name": "EliteDesk"},
+        "10.20.31.1": {"name": "VPN Test (Node5)"},
+        "8.8.8.8": {"name": "Internet Connectivity"},
+        "google.com": {"name": "DNS + Internet Connectivity"}
+    }
 
     for i in ips:
-        response = os.system("ping -c 1 -i 0.5 -W 0.5 " + i)
+        # Linux only: Ping 3 times, .2 seconds between each try, wait a half second for each reply.
+        # Response = 0 if all succeeded, 1 if some are missing, 2 for other errors.
+        #response = os.system("ping -c 3 -W 0.5 " + i)
+        proc = subprocess.Popen("ping -c 3 -W 0.5 -i 0.2 " + i, stdout=subprocess.PIPE, shell=True)
+        (out, err) = proc.communicate()
+        returnCode = proc.returncode
+        #print("program output:", out)
 
-        if response == 0:
+        if returnCode == 0:
             ips[i]["result"] = "up"
         else:
             ips[i]["result"] = "down"
 
+    tableData = []
     for key, value in ips.items():
-        print(key + " (" + value["name"] + "): ", end="")
+        row = [key, value["name"]]
+        #print(key + " (" + value["name"] + "): ", end="")
         if value["result"] == "up":
-            print(Fore.GREEN, end="")
+            row.append(Fore.GREEN + value["result"] + Style.RESET_ALL)
         else:
-            print(Fore.RED, end="")
-        print(value["result"] + Style.RESET_ALL)
+            row.append(Fore.RED + value["result"] + Style.RESET_ALL)
+            #print(Fore.RED, end="")
+        #print()
+        tableData.append(row)
+
+
+    # display table
+    col_names = ["IP", "Alias", "Ping Result"]
+    print(tabulate(tableData, headers=col_names, tablefmt="fancy_grid"))
 
     print()
 
-    proc = subprocess.Popen(["ifconfig"], stdout=subprocess.PIPE, shell=True)
-    (out, err) = proc.communicate()
-    print("program output:", out)
-    print(type(out))
-    parts = out.decode("utf-8").split('\n')
-    print(parts)
-    print("Current IP Address: ")
 
 
 def cmd2():
@@ -54,24 +99,32 @@ def cmd4():
     return
 
 
-print("Commands (enter number):")
-print("1. Run tests")
-print("2. Change local IP")
-print("3. Restart pfSense")
-print("4. Migrate pfSense to other server")
+if __name__ == "__main__":
 
-cmd1()
+    print("Network Diagnostic Bot")
 
-'''
-while True:
-    cmdnum = input("Which command would you like to run?")
+    options = [
+        "[1] Run tests",
+        "[2] Change local IP",
+        "[3] Restart opnSense",
+        "[4] Restart Elitedesk",
+        "[5] Exit"
+    ]
+    terminal_menu = TerminalMenu(options, title="Options:")
 
-    if cmdnum == 1:
-        cmd1()
-    elif cmdnum == 2:
-        cmd2()
-    elif cmdnum == 3:
-        cmd3()
-    elif cmdnum == 4:
-        cmd4()
-'''
+    while True:
+        menu_entry_index = terminal_menu.show()
+
+        if menu_entry_index == 0:
+            cmd1()
+        elif menu_entry_index == 1:
+            cmd2()
+        elif menu_entry_index == 2:
+            cmd3()
+        elif menu_entry_index == 3:
+            cmd4()
+        elif menu_entry_index == 4:
+            break
+        else:
+            break
+
