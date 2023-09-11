@@ -8,7 +8,6 @@ from tabulate import tabulate
 
 
 def getDiagnosticInfo():
-
     # IP Address Information
     proc = subprocess.Popen("ipconfig.exe /all", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
@@ -42,7 +41,7 @@ def getDiagnosticInfo():
 
         if adapterPrintout:
             # Only print lines that match what we want, including follow-up lines
-            if [keyword for keyword in targetData if(keyword in line)]:
+            if [keyword for keyword in targetData if (keyword in line)]:
                 informationPrintout = True
                 print(line)
             elif informationPrintout and len(line) >= 4 and line[3] == " ":
@@ -55,8 +54,6 @@ def getDiagnosticInfo():
     #print(type(out))
     #parts = out.decode("utf-8").split('\n')
     #print(parts)
-    #print("Current IP Address: ")
-
 
     # Ping Test
     print("Running ping tests...")
@@ -94,7 +91,6 @@ def getDiagnosticInfo():
         #print()
         tableData.append(row)
 
-
     # display table
     col_names = ["IP", "Alias", "Ping Result"]
     print(tabulate(tableData, headers=col_names, tablefmt="fancy_grid"))
@@ -108,6 +104,7 @@ def changeIp():
     (out, err) = proc.communicate()
     out = out.decode("utf-8").split('\n')
 
+    # Format interface information into a table and selectable menu
     tableData = []
     options = []
     index = 1
@@ -131,26 +128,45 @@ def changeIp():
             adapterWanted = False
             index += 1
             options.append("[" + str(tableData[-1][0]) + "] " + tableData[-1][1])
-
     col_names = ["Number", "Adapter Name", "DHCP Enabled?", "IP Address", "Subnet Prefix", "Default Gateway"]
     print(tabulate(tableData, headers=col_names, tablefmt="fancy_grid"))
 
     # Print out menu to select adapter
     terminal_menu = TerminalMenu(options, title="Select Adapter:")
+    interface_number = terminal_menu.show()
 
-    while True:
-        menu_entry_index = terminal_menu.show()
+    # Validate selection
+    if 0 <= interface_number < len(options):
+        # Prompt to select static IP or DHCP mode
+        options = ["[1] DHCP (Normal)", "[2] Static (Debug)"]
+        terminal_menu = TerminalMenu(options, title="Select Mode:")
+        mode = terminal_menu.show()
 
-        if 0 < menu_entry_index <= len(options):
-            # Make the change
-            proc = subprocess.Popen('netsh.exe interface ipv4 set address name="' + options[menu_entry_index][1] + '" static 10.20.32.82 255.255.255.0 10.20.32.1', stdout=subprocess.PIPE, shell=True)
+        # Validate selection
+        if 0 <= mode < len(options):
+            # Make the (right) change
+            if mode == 0:
+                # Set to DHCP
+                proc = subprocess.Popen('netsh.exe interface ipv4 set address name="' + tableData[interface_number][1]
+                                        + '" source=dhcp', stdout=subprocess.PIPE, shell=True)
+            else:
+                # Set to Static
+                # TODO: Have this be config driven
+                proc = subprocess.Popen('netsh.exe interface ipv4 set address name="' + tableData[interface_number][1]
+                                        + '" static 10.20.32.82 255.255.255.0 10.20.32.1', stdout=subprocess.PIPE,
+                                        shell=True)
             (out, err) = proc.communicate()
             out = out.decode("utf-8").split('\n')
-
+            if out == ["\r", ""] or out == ['DHCP is already enabled on this interface.\r', '\r', '']:
+                print("IP address changed successfully.")
+            else:
+                print("Something went wrong:", out)
 
         else:
-            break
+            print("Invalid option, please try again.")
 
+    else:
+        print("Invalid option, please try again.")
 
 
 def cmd3():
@@ -172,9 +188,10 @@ if __name__ == "__main__":
         "[4] Restart Elitedesk",
         "[5] Exit"
     ]
-    terminal_menu = TerminalMenu(options, title="Options:")
+    terminal_menu = TerminalMenu(options, title="Main Menu Options:")
 
     while True:
+        print("------------------------------------------------------")
         menu_entry_index = terminal_menu.show()
 
         if menu_entry_index == 0:
@@ -189,4 +206,3 @@ if __name__ == "__main__":
             break
         else:
             break
-
