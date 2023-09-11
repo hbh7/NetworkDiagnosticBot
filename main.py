@@ -7,7 +7,7 @@ from simple_term_menu import TerminalMenu
 from tabulate import tabulate
 
 
-def cmd1():
+def getDiagnosticInfo():
 
     # IP Address Information
     proc = subprocess.Popen("ipconfig.exe /all", stdout=subprocess.PIPE, shell=True)
@@ -15,25 +15,40 @@ def cmd1():
 
     # Find physical ethernet adapters
     print("Current IP Information:")
-    printout = False
+    adapterPrintout = False
+    informationPrintout = False
     out = out.decode("utf-8").split('\n')
     targetData = [
+        "Ethernet adapter Ethernet",
         "Description",
         "Physical Address",
         "DHCP Enabled",
         "Autoconfiguration Enabled",
+        #"IPv6 Address",
         "IPv4 Address",
+        #"Lease Obtained",
+        #"Lease Expires",
+        "Subnet Mask",
+        "Default Gateway",
+        "DHCP Server",
+        "DNS Servers",
 
     ]
     for line in out:
         if "Ethernet adapter Ethernet" in line:
-            printout = True
+            adapterPrintout = True
         elif len(line) > 0 and line[0] != " " and line[0] != "\r":
-            printout = False
+            adapterPrintout = False
 
-        if printout:
+        if adapterPrintout:
+            # Only print lines that match what we want, including follow-up lines
             if [keyword for keyword in targetData if(keyword in line)]:
+                informationPrintout = True
                 print(line)
+            elif informationPrintout and len(line) >= 4 and line[3] == " ":
+                print(line)
+            else:
+                informationPrintout = False
 
 
     #print("program output:", out)
@@ -44,6 +59,7 @@ def cmd1():
 
 
     # Ping Test
+    print("Running ping tests...")
     ips = {
         "10.20.32.1": {"name": "Router"},
         "10.20.32.99": {"name": "EliteDesk"},
@@ -86,9 +102,55 @@ def cmd1():
     print()
 
 
+def changeIp():
+    # Gather list of interfaces and details
+    proc = subprocess.Popen("netsh.exe interface ipv4 show config", stdout=subprocess.PIPE, shell=True)
+    (out, err) = proc.communicate()
+    out = out.decode("utf-8").split('\n')
 
-def cmd2():
-    return
+    tableData = []
+    options = []
+    index = 1
+    row = []
+    adapterWanted = False
+    for line in out:
+        if "Configuration for" in line and "Ethernet" in line and "vEthernet" not in line:
+            row.append(index)
+            row.append(line.split('"')[1])
+            adapterWanted = True
+
+        elif adapterWanted and ("DHCP enabled" in line or "IP Address" in line or "Default Gateway" in line):
+            row.append(line.split(" ")[-1].strip("\r"))
+
+        elif adapterWanted and "Subnet Prefix" in line:
+            row.append(line.split(" ")[-3])
+
+        elif adapterWanted and len(line) == 1 and line[0] == "\r":
+            tableData.append(row)
+            row = []
+            adapterWanted = False
+            index += 1
+            options.append("[" + str(tableData[-1][0]) + "] " + tableData[-1][1])
+
+    col_names = ["Number", "Adapter Name", "DHCP Enabled?", "IP Address", "Subnet Prefix", "Default Gateway"]
+    print(tabulate(tableData, headers=col_names, tablefmt="fancy_grid"))
+
+    # Print out menu to select adapter
+    terminal_menu = TerminalMenu(options, title="Select Adapter:")
+
+    while True:
+        menu_entry_index = terminal_menu.show()
+
+        if 0 < menu_entry_index <= len(options):
+            # Make the change
+            proc = subprocess.Popen('netsh.exe interface ipv4 set address name="' + options[menu_entry_index][1] + '" static 10.20.32.82 255.255.255.0 10.20.32.1', stdout=subprocess.PIPE, shell=True)
+            (out, err) = proc.communicate()
+            out = out.decode("utf-8").split('\n')
+
+
+        else:
+            break
+
 
 
 def cmd3():
@@ -104,7 +166,7 @@ if __name__ == "__main__":
     print("Network Diagnostic Bot")
 
     options = [
-        "[1] Run tests",
+        "[1] Get diagnostic information and run basic tests",
         "[2] Change local IP",
         "[3] Restart opnSense",
         "[4] Restart Elitedesk",
@@ -116,9 +178,9 @@ if __name__ == "__main__":
         menu_entry_index = terminal_menu.show()
 
         if menu_entry_index == 0:
-            cmd1()
+            getDiagnosticInfo()
         elif menu_entry_index == 1:
-            cmd2()
+            changeIp()
         elif menu_entry_index == 2:
             cmd3()
         elif menu_entry_index == 3:

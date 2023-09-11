@@ -3,6 +3,13 @@ A handy script that can debug the network for me when I'm not there and I have t
 
 List of the things to do:
 ```
+
+Clean up documentation
+Clean up code
+Set up config file
+Genericify tools/functions
+
+
 Print this to user: 
 Commands (enter number): 
 1. Run tests
