@@ -1,7 +1,4 @@
-import os
-from colorama import Fore, Back, Style
-import paramiko
-import socket
+from colorama import Fore, Style
 import subprocess
 from simple_term_menu import TerminalMenu
 from tabulate import tabulate
@@ -48,12 +45,6 @@ def getDiagnosticInfo():
                 print(line)
             else:
                 informationPrintout = False
-
-
-    #print("program output:", out)
-    #print(type(out))
-    #parts = out.decode("utf-8").split('\n')
-    #print(parts)
 
     # Ping Test
     print("Running ping and connectivity tests...")
@@ -153,14 +144,14 @@ def changeIp():
     interface_number = terminal_menu.show()
 
     # Validate selection
-    if 0 <= interface_number < len(options):
+    if interface_number is not None and 0 <= interface_number < len(options):
         # Prompt to select static IP or DHCP mode
         options = ["[1] DHCP (Normal)", "[2] Static (Debug)"]
         terminal_menu = TerminalMenu(options, title="Select Mode:")
         mode = terminal_menu.show()
 
         # Validate selection
-        if 0 <= mode < len(options):
+        if mode is not None and 0 <= mode < len(options):
             # Make the (right) change
             if mode == 0:
                 # Set to DHCP
