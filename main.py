@@ -187,11 +187,11 @@ def changeIp():
 
 
 def restart_system(ip):
-
-    return
-
-
-def cmd4():
+    proc = subprocess.Popen("ssh root@" + ip + " -t 'reboot'", stdout=subprocess.PIPE, shell=True)
+    (out, err) = proc.communicate()
+    out = out.decode("utf-8").split('\n')
+    for line in out:
+        print(line)
     return
 
 
