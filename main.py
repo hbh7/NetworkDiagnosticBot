@@ -23,10 +23,10 @@ def getDiagnosticInfo():
         "Physical Address",
         "DHCP Enabled",
         "Autoconfiguration Enabled",
-        #"IPv6 Address",
+        "IPv6 Address",
         "IPv4 Address",
-        #"Lease Obtained",
-        #"Lease Expires",
+        "Lease Obtained",
+        "Lease Expires",
         "Subnet Mask",
         "Default Gateway",
         "DHCP Server",
@@ -56,43 +56,60 @@ def getDiagnosticInfo():
     #print(parts)
 
     # Ping Test
-    print("Running ping tests...")
+    print("Running ping and connectivity tests...")
     ips = {
-        "10.20.32.1": {"name": "Router"},
-        "10.20.32.99": {"name": "EliteDesk"},
-        "10.20.31.1": {"name": "VPN Test (Node5)"},
-        "8.8.8.8": {"name": "Internet Connectivity"},
-        "google.com": {"name": "DNS + Internet Connectivity"}
+        "10.20.32.1": {"name": "Router", "connectivity_test": "ssh"},
+        "10.20.32.99": {"name": "EliteDesk", "connectivity_test": "ssh"},
+        "10.20.31.1": {"name": "VPN Test (Node5)", "connectivity_test": "none"},
+        "8.8.8.8": {"name": "Internet Connectivity", "connectivity_test": "none"},
+        "google.com": {"name": "DNS + Internet Connectivity", "connectivity_test": "none"}
     }
 
     for i in ips:
+        # Ping Test
         # Linux only: Ping 3 times, .2 seconds between each try, wait a half second for each reply.
         # Response = 0 if all succeeded, 1 if some are missing, 2 for other errors.
-        #response = os.system("ping -c 3 -W 0.5 " + i)
         proc = subprocess.Popen("ping -c 3 -W 0.5 -i 0.2 " + i, stdout=subprocess.PIPE, shell=True)
-        (out, err) = proc.communicate()
+        proc.communicate()
         returnCode = proc.returncode
-        #print("program output:", out)
 
         if returnCode == 0:
-            ips[i]["result"] = "up"
+            ips[i]["ping_result"] = "up"
         else:
-            ips[i]["result"] = "down"
+            ips[i]["ping_result"] = "down"
+        print(".", end="")  # Status indicator
+
+        # SSH Test
+        if ips[i]["connectivity_test"] == "ssh":
+            proc = subprocess.Popen("nc -w 2 " + i + " 22", stdout=subprocess.PIPE, shell=True)
+            proc.communicate()
+            returnCode = proc.returncode
+
+            if returnCode == 0:
+                ips[i]["connectivity_result"] = "SSH up"
+            else:
+                ips[i]["connectivity_result"] = "SSH down"
+        print(".", end="")  # Status indicator
 
     tableData = []
     for key, value in ips.items():
         row = [key, value["name"]]
-        #print(key + " (" + value["name"] + "): ", end="")
-        if value["result"] == "up":
-            row.append(Fore.GREEN + value["result"] + Style.RESET_ALL)
+        if value["ping_result"] == "up":
+            row.append(Fore.GREEN + value["ping_result"] + Style.RESET_ALL)
         else:
-            row.append(Fore.RED + value["result"] + Style.RESET_ALL)
-            #print(Fore.RED, end="")
-        #print()
+            row.append(Fore.RED + value["ping_result"] + Style.RESET_ALL)
+        if "connectivity_result" in value:
+            if "up" in value["connectivity_result"]:
+                row.append(Fore.GREEN + value["connectivity_result"] + Style.RESET_ALL)
+            else:
+                row.append(Fore.RED + value["connectivity_result"] + Style.RESET_ALL)
+        else:
+            row.append(Fore.YELLOW + "not tested" + Style.RESET_ALL)
         tableData.append(row)
 
-    # display table
-    col_names = ["IP", "Alias", "Ping Result"]
+    # Display table of results
+    col_names = ["IP", "Alias", "Ping Result", "Connectivity Result"]
+    print()
     print(tabulate(tableData, headers=col_names, tablefmt="fancy_grid"))
 
     print()
@@ -169,7 +186,8 @@ def changeIp():
         print("Invalid option, please try again.")
 
 
-def cmd3():
+def restart_system(ip):
+
     return
 
 
@@ -199,9 +217,9 @@ if __name__ == "__main__":
         elif menu_entry_index == 1:
             changeIp()
         elif menu_entry_index == 2:
-            cmd3()
+            restart_system("10.20.32.1")
         elif menu_entry_index == 3:
-            cmd4()
+            restart_system("10.20.32.99")
         elif menu_entry_index == 4:
             break
         else:
