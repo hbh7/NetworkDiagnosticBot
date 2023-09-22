@@ -2,3 +2,4 @@ colorama
 paramiko
 simple_term_menu
 tabulate
+pyyaml

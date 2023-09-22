@@ -2,9 +2,10 @@ from colorama import Fore, Style
 import subprocess
 from simple_term_menu import TerminalMenu
 from tabulate import tabulate
+import yaml
 
 
-def getDiagnosticInfo():
+def getDiagnosticInfo(config):
     # IP Address Information
     proc = subprocess.Popen("ipconfig.exe /all", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
@@ -14,31 +15,19 @@ def getDiagnosticInfo():
     adapterPrintout = False
     informationPrintout = False
     out = out.decode("utf-8").split('\n')
-    targetData = [
-        "Ethernet adapter Ethernet",
-        "Description",
-        "Physical Address",
-        "DHCP Enabled",
-        "Autoconfiguration Enabled",
-        "IPv6 Address",
-        "IPv4 Address",
-        "Lease Obtained",
-        "Lease Expires",
-        "Subnet Mask",
-        "Default Gateway",
-        "DHCP Server",
-        "DNS Servers",
-
-    ]
+    adapterTypes = config['ipconfig']['adapter_types']
+    desiredFields = config['ipconfig']['desired_fields'] + adapterTypes
     for line in out:
-        if "Ethernet adapter Ethernet" in line:
+        # Check for desired adapter type and enable printing if found
+        if any(item in line for item in adapterTypes):
+            print()
             adapterPrintout = True
         elif len(line) > 0 and line[0] != " " and line[0] != "\r":
             adapterPrintout = False
 
         if adapterPrintout:
             # Only print lines that match what we want, including follow-up lines
-            if [keyword for keyword in targetData if (keyword in line)]:
+            if [keyword for keyword in desiredFields if (keyword in line)]:
                 informationPrintout = True
                 print(line)
             elif informationPrintout and len(line) >= 4 and line[3] == " ":
@@ -46,54 +35,50 @@ def getDiagnosticInfo():
             else:
                 informationPrintout = False
 
-    # Ping Test
-    print("Running ping and connectivity tests...")
-    ips = {
-        "10.20.32.1": {"name": "Router", "connectivity_test": "ssh"},
-        "10.20.32.99": {"name": "EliteDesk", "connectivity_test": "ssh"},
-        "10.20.31.1": {"name": "VPN Test (Node5)", "connectivity_test": "none"},
-        "8.8.8.8": {"name": "Internet Connectivity", "connectivity_test": "none"},
-        "google.com": {"name": "DNS + Internet Connectivity", "connectivity_test": "none"}
-    }
+    # Load systems from config file
+    systems = config['ping']['systems']
 
-    for i in ips:
+    # Start ping and connectivity tests
+    print("\nRunning ping and connectivity tests...")
+    for system in systems:
         # Ping Test
         # Linux only: Ping 3 times, .2 seconds between each try, wait a half second for each reply.
         # Response = 0 if all succeeded, 1 if some are missing, 2 for other errors.
-        proc = subprocess.Popen("ping -c 3 -W 0.5 -i 0.2 " + i, stdout=subprocess.PIPE, shell=True)
+        proc = subprocess.Popen("ping -c 3 -W 0.5 -i 0.2 " + system["ip"], stdout=subprocess.PIPE, shell=True)
         proc.communicate()
         returnCode = proc.returncode
 
         if returnCode == 0:
-            ips[i]["ping_result"] = "up"
+            system["ping_result"] = "up"
         else:
-            ips[i]["ping_result"] = "down"
+            system["ping_result"] = "down"
         print(".", end="")  # Status indicator
 
         # SSH Test
-        if ips[i]["connectivity_test"] == "ssh":
-            proc = subprocess.Popen("nc -w 2 " + i + " 22", stdout=subprocess.PIPE, shell=True)
+        if system["connectivity_test"] == "ssh":
+            proc = subprocess.Popen("nc -w 2 " + system["ip"] + " 22", stdout=subprocess.PIPE, shell=True)
             proc.communicate()
             returnCode = proc.returncode
 
             if returnCode == 0:
-                ips[i]["connectivity_result"] = "SSH up"
+                system["connectivity_result"] = "SSH up"
             else:
-                ips[i]["connectivity_result"] = "SSH down"
+                system["connectivity_result"] = "SSH down"
         print(".", end="")  # Status indicator
 
+    # Reformat into something we can display nicely
     tableData = []
-    for key, value in ips.items():
-        row = [key, value["name"]]
-        if value["ping_result"] == "up":
-            row.append(Fore.GREEN + value["ping_result"] + Style.RESET_ALL)
+    for system in systems:
+        row = [system["ip"], system["name"]]
+        if system["ping_result"] == "up":
+            row.append(Fore.GREEN + system["ping_result"] + Style.RESET_ALL)
         else:
-            row.append(Fore.RED + value["ping_result"] + Style.RESET_ALL)
-        if "connectivity_result" in value:
-            if "up" in value["connectivity_result"]:
-                row.append(Fore.GREEN + value["connectivity_result"] + Style.RESET_ALL)
+            row.append(Fore.RED + system["ping_result"] + Style.RESET_ALL)
+        if "connectivity_result" in system:
+            if "up" in system["connectivity_result"]:
+                row.append(Fore.GREEN + system["connectivity_result"] + Style.RESET_ALL)
             else:
-                row.append(Fore.RED + value["connectivity_result"] + Style.RESET_ALL)
+                row.append(Fore.RED + system["connectivity_result"] + Style.RESET_ALL)
         else:
             row.append(Fore.YELLOW + "not tested" + Style.RESET_ALL)
         tableData.append(row)
@@ -106,7 +91,7 @@ def getDiagnosticInfo():
     print()
 
 
-def changeIp():
+def changeIp(config):
     # Gather list of interfaces and details
     proc = subprocess.Popen("netsh.exe interface ipv4 show config", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
@@ -152,16 +137,16 @@ def changeIp():
 
         # Validate selection
         if mode is not None and 0 <= mode < len(options):
-            # Make the (right) change
             if mode == 0:
                 # Set to DHCP
                 proc = subprocess.Popen('netsh.exe interface ipv4 set address name="' + tableData[interface_number][1]
                                         + '" source=dhcp', stdout=subprocess.PIPE, shell=True)
             else:
                 # Set to Static
-                # TODO: Have this be config driven
                 proc = subprocess.Popen('netsh.exe interface ipv4 set address name="' + tableData[interface_number][1]
-                                        + '" static 10.20.32.82 255.255.255.0 10.20.32.1', stdout=subprocess.PIPE,
+                                        + '" static ' + config["static_local_ip"]["ip"]
+                                        + ' ' + config["static_local_ip"]["mask"]
+                                        + ' ' + config["static_local_ip"]["gateway"], stdout=subprocess.PIPE,
                                         shell=True)
             (out, err) = proc.communicate()
             out = out.decode("utf-8").split('\n')
@@ -177,8 +162,8 @@ def changeIp():
         print("Invalid option, please try again.")
 
 
-def restart_system(ip):
-    proc = subprocess.Popen("ssh root@" + ip + " -t 'reboot'", stdout=subprocess.PIPE, shell=True)
+def restart_system(ip, username):
+    proc = subprocess.Popen("ssh " + username + "@" + ip + " -t 'reboot'", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
     out = out.decode("utf-8").split('\n')
     for line in out:
@@ -186,32 +171,40 @@ def restart_system(ip):
     return
 
 
-if __name__ == "__main__":
-
+def main():
     print("Network Diagnostic Bot")
 
+    # Read configuration file
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+
+    # Build menu of options
     options = [
         "[1] Get diagnostic information and run basic tests",
-        "[2] Change local IP",
-        "[3] Restart opnSense",
-        "[4] Restart Elitedesk",
-        "[5] Exit"
+        "[2] Change local IP"
     ]
-    terminal_menu = TerminalMenu(options, title="Main Menu Options:")
+    option_number = 3
+    for system in config["restart"]["systems"]:
+        options.insert(option_number - 1, f"[{option_number}] Restart {system['name']}")
+        option_number += 1
+    options.append("[" + str(option_number) + "] Exit")
 
+    # Display menu
+    terminal_menu = TerminalMenu(options, title="Main Menu Options:")
     while True:
         print("------------------------------------------------------")
         menu_entry_index = terminal_menu.show()
 
         if menu_entry_index == 0:
-            getDiagnosticInfo()
+            getDiagnosticInfo(config)
         elif menu_entry_index == 1:
-            changeIp()
-        elif menu_entry_index == 2:
-            restart_system("10.20.32.1")
-        elif menu_entry_index == 3:
-            restart_system("10.20.32.99")
-        elif menu_entry_index == 4:
-            break
+            changeIp(config)
+        elif 1 < menu_entry_index < option_number - 1:
+            restart_system(config["restart"]["systems"][menu_entry_index - 4]["ip"],
+                           config["restart"]["systems"][menu_entry_index - 4]["username"])
         else:
             break
+
+
+if __name__ == "__main__":
+    main()

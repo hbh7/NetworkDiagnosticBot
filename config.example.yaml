@@ -1,0 +1,47 @@
+ipconfig:
+  adapter_types:
+    - "Ethernet adapter Ethernet"
+    - "Wireless LAN adapter"
+  desired_fields:
+    - "Description"
+    - "Physical Address"
+    - "DHCP Enabled"
+    - "Autoconfiguration Enabled"
+    - "IPv6 Address"
+    - "IPv4 Address"
+    - "Lease Obtained"
+    - "Lease Expires"
+    - "Subnet Mask"
+    - "Default Gateway"
+    - "DHCP Server"
+    - "DNS Servers"
+
+ping:
+  systems:
+    - ip: "10.0.0.1"
+      name: "Router"
+      connectivity_test: "ssh"
+    - ip: "10.0.0.2"
+      name: "Server"
+      connectivity_test: "none"
+
+static_local_ip:
+  ip: "10.0.0.3"
+  mask: "255.255.255.0"
+  gateway: "10.0.0.1"
+
+restart:
+  systems:
+    - ip: "10.0.0.1"
+      name: "Router"
+      username: "root"
+    - ip: "10.0.0.2"
+      name: "Server"
+      username: "root"
+
+browser:
+  pages:
+    - name: "Router"
+      address: "https://10.0.0.1"
+    - name: "Server"
+      address: "https://10.0.0.2"
