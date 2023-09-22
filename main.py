@@ -5,7 +5,7 @@ from tabulate import tabulate
 import yaml
 
 
-def getDiagnosticInfo(config):
+def get_diagnostic_info(config):
     # IP Address Information
     proc = subprocess.Popen("ipconfig.exe /all", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
@@ -91,7 +91,7 @@ def getDiagnosticInfo(config):
     print()
 
 
-def changeIp(config):
+def change_ip(config):
     # Gather list of interfaces and details
     proc = subprocess.Popen("netsh.exe interface ipv4 show config", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
@@ -162,13 +162,56 @@ def changeIp(config):
         print("Invalid option, please try again.")
 
 
-def restart_system(ip, username):
-    proc = subprocess.Popen("ssh " + username + "@" + ip + " -t 'reboot'", stdout=subprocess.PIPE, shell=True)
-    (out, err) = proc.communicate()
-    out = out.decode("utf-8").split('\n')
-    for line in out:
-        print(line)
-    return
+def restart_system(config):
+    # Build menu of options
+    option_number = 1
+    options = []
+    for system in config["restart"]["systems"]:
+        options.append(f"[{option_number}] {system['name']}")
+        option_number += 1
+    options.append(f"[{option_number}] Return to previous menu")
+
+    # Display menu
+    terminal_menu = TerminalMenu(options, title="Select a system to restart:")
+    menu_entry_index = terminal_menu.show()
+
+    # Validate selection
+    if menu_entry_index is not None and 0 <= menu_entry_index < option_number - 1:
+        username = config["restart"]["systems"][menu_entry_index]["username"]
+        ip = config["restart"]["systems"][menu_entry_index]["ip"]
+        proc = subprocess.Popen("ssh " + username + "@" + ip + " -t 'reboot'", stdout=subprocess.PIPE, shell=True)
+        (out, err) = proc.communicate()
+        out = out.decode("utf-8").split('\n')
+        for line in out:
+            print(line)
+
+    else:
+        print("Invalid selection, returning to main menu.")
+        return
+
+
+def open_browser_site(config):
+    # Build menu of options
+    option_number = 1
+    options = []
+    for system in config["browser"]["sites"]:
+        options.append(f"[{option_number}] {system['name']}")
+        option_number += 1
+    options.append(f"[{option_number}] Return to previous menu")
+
+    # Display menu
+    terminal_menu = TerminalMenu(options, title="Select a site to open:")
+    menu_entry_index = terminal_menu.show()
+
+    # Validate selection
+    if menu_entry_index is not None and 0 <= menu_entry_index < option_number - 1:
+        site = config["browser"]["sites"][menu_entry_index]["address"]
+        subprocess.Popen("explorer.exe " + site, stdout=subprocess.PIPE, shell=True)
+        print("Site opened!")
+
+    else:
+        print("Invalid selection, returning to main menu.")
+        return
 
 
 def main():
@@ -181,13 +224,11 @@ def main():
     # Build menu of options
     options = [
         "[1] Get diagnostic information and run basic tests",
-        "[2] Change local IP"
+        "[2] Change local IP",
+        "[3] Restart system",
+        "[4] Open browser site",
+        "[5] Exit"
     ]
-    option_number = 3
-    for system in config["restart"]["systems"]:
-        options.insert(option_number - 1, f"[{option_number}] Restart {system['name']}")
-        option_number += 1
-    options.append("[" + str(option_number) + "] Exit")
 
     # Display menu
     terminal_menu = TerminalMenu(options, title="Main Menu Options:")
@@ -195,13 +236,17 @@ def main():
         print("------------------------------------------------------")
         menu_entry_index = terminal_menu.show()
 
-        if menu_entry_index == 0:
-            getDiagnosticInfo(config)
-        elif menu_entry_index == 1:
-            changeIp(config)
-        elif 1 < menu_entry_index < option_number - 1:
-            restart_system(config["restart"]["systems"][menu_entry_index - 4]["ip"],
-                           config["restart"]["systems"][menu_entry_index - 4]["username"])
+        if menu_entry_index is not None:
+            if menu_entry_index == 0:
+                get_diagnostic_info(config)
+            elif menu_entry_index == 1:
+                change_ip(config)
+            elif menu_entry_index == 2:
+                restart_system(config)
+            elif menu_entry_index == 3:
+                open_browser_site(config)
+            else:
+                break
         else:
             break
 
