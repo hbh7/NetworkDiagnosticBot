@@ -4,8 +4,9 @@ from simple_term_menu import TerminalMenu
 from tabulate import tabulate
 import yaml
 
-
 def get_diagnostic_info(config):
+    """ This function is used to check system connectivity via pinging/sshing/etc. to systems defined in the config."""
+
     # IP Address Information
     proc = subprocess.Popen("ipconfig.exe /all", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
@@ -92,6 +93,8 @@ def get_diagnostic_info(config):
 
 
 def change_ip(config):
+    """ This function is used to change an adapter's IP from DHCP or to a statically defined IP from the config."""
+
     # Gather list of interfaces and details
     proc = subprocess.Popen("netsh.exe interface ipv4 show config", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
@@ -163,6 +166,8 @@ def change_ip(config):
 
 
 def restart_system(config):
+    """ This function is used to initiate a restart on systems defined in the config."""
+
     # Build menu of options
     option_number = 1
     options = []
@@ -191,6 +196,8 @@ def restart_system(config):
 
 
 def open_browser_site(config):
+    """ This function is used to open websites defined in the config."""
+
     # Build menu of options
     option_number = 1
     options = []
@@ -215,6 +222,8 @@ def open_browser_site(config):
 
 
 def main():
+    """ This function manages the program lifecycle and ensures the config can be read."""
+
     print("Network Diagnostic Bot")
 
     # Read configuration file

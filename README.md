@@ -1,6 +1,12 @@
 # NetworkDiagnosticBot
 A handy script that can debug the network for me when I'm not there and I have to rely on non-technical users.
 
+Current modes:
+1. Get diagnostic information and run basic tests
+2. Change local IP
+3. Restart system
+4. Open browser site
+
 
 ## Usage
 This script is also intended to be run on a Windows machine, but through WSL (Ubuntu preferred). This allows access to some Linux tools in a fairly easy way, as well as still allowing access to Windows tools. 
