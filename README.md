@@ -11,7 +11,7 @@ Current modes:
 ## Usage
 This script is also intended to be run on a Windows machine, but through WSL (Ubuntu preferred). This allows access to some Linux tools in a fairly easy way, as well as still allowing access to Windows tools. 
 
-You'll want to copy the `config.example.yaml` to `config.yaml`, then edit it to match your environment. Afterward, you can use Python 3 to run the script, such as via `python main.py`.
+You'll want to copy the `config.example.yaml` to `config.yaml`, then edit it to match your environment. You also need to install the required packages using `pip install -r requirements.txt`. Afterward, you can use Python 3 to run the script, such as via `python main.py`.
 
 For convenience, you can also create a Windows shortcut to run this script. Open file explorer, then click Context Menu -> New -> Shortcut -> add the following: `wsl -- python /path/to/NetworkDiagnosticBot/main.py`.
 
